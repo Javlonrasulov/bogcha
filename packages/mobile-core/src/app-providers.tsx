@@ -14,18 +14,16 @@ import { ToastProvider } from './ui/toast';
  */
 export function AppProviders({
   baseUrl,
-  demoProfile = 'admin',
   children,
 }: {
   baseUrl: string;
-  demoProfile?: 'admin' | 'teacher';
   children: ReactNode;
 }) {
   return (
     <FontGate>
       <ThemeProvider>
         <I18nProvider>
-          <AuthProvider baseUrl={baseUrl} demoProfile={demoProfile}>
+          <AuthProvider baseUrl={baseUrl}>
             <SyncProvider>
               <RealtimeProvider>
                 <ToastProvider>{children}</ToastProvider>

@@ -135,8 +135,6 @@ export const uzLatn = {
     signOut: 'Chiqish',
     invalid: "Telefon yoki parol noto'g'ri",
     expired: 'Sessiya muddati tugadi, qaytadan kiring',
-    demoTitle: 'Demo akkauntlar',
-    demoHint: 'Bosib qo\'yish uchun tanlang',
     profile: 'Profil',
     changePassword: "Parolni o'zgartirish",
     currentPassword: 'Joriy parol',

@@ -3,20 +3,9 @@ import { CheckCircle2, Sparkles } from 'lucide-react';
 import { getT } from '../../i18n/server';
 import { ThemeToggle } from '../../components/shell/theme-toggle';
 import { LocaleSwitcher } from '../../components/shell/switchers';
-import { LoginForm, type DemoAccount } from './login-form';
+import { LoginForm } from './login-form';
 
 export const metadata: Metadata = { title: 'Kirish' };
-
-const DEMO_PASSWORD = 'Bogcha2026!';
-
-const DEMO_ACCOUNTS: DemoAccount[] = [
-  { label: 'Owner', identifier: '+998901110001', password: DEMO_PASSWORD },
-  { label: 'Administrator', identifier: '+998901110002', password: DEMO_PASSWORD },
-  { label: 'Tarbiyachi', identifier: '+998901110011', password: DEMO_PASSWORD },
-  { label: 'Oshpaz', identifier: '+998901110021', password: DEMO_PASSWORD },
-  { label: 'Omborchi', identifier: '+998901110031', password: DEMO_PASSWORD },
-  { label: 'Buxgalter', identifier: '+998901110041', password: DEMO_PASSWORD },
-];
 
 export default async function LoginPage({
   searchParams,
@@ -24,7 +13,6 @@ export default async function LoginPage({
   searchParams: Promise<{ next?: string; reason?: string }>;
 }) {
   const [t, params] = await Promise.all([getT(), searchParams]);
-  const showDemo = process.env.NODE_ENV !== 'production';
 
   return (
     <div className="grid min-h-dvh lg:grid-cols-[1.05fr_1fr]">
@@ -95,11 +83,7 @@ export default async function LoginPage({
           </div>
         </div>
 
-        <LoginForm
-          next={params.next}
-          reason={params.reason}
-          demoAccounts={showDemo ? DEMO_ACCOUNTS : []}
-        />
+        <LoginForm next={params.next} reason={params.reason} />
       </main>
     </div>
   );

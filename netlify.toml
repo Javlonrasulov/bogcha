@@ -1,0 +1,9 @@
+# Bog'cha Admin Web (Next.js) — monorepo root build
+[build]
+  command = "npm run build --workspace=@bogcha/shared && npm run build --workspace=@bogcha/web"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

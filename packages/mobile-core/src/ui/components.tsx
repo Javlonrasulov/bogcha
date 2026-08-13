@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useRef, useState, type ComponentProps } from 'react';
+import { forwardRef, useEffect, useRef, useState, type ComponentProps } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -563,7 +563,10 @@ export interface FieldProps extends TextInputProps {
   trailing?: React.ReactNode;
 }
 
-export function Field({ label, error, hint, trailing, style, ...rest }: FieldProps) {
+export const Field = forwardRef<TextInput, FieldProps>(function Field(
+  { label, error, hint, trailing, style, onFocus, onBlur, ...rest },
+  ref,
+) {
   const { colors } = useTheme();
   const [focused, setFocused] = useState(false);
 
@@ -576,9 +579,16 @@ export function Field({ label, error, hint, trailing, style, ...rest }: FieldPro
       ) : null}
       <View style={{ justifyContent: 'center' }}>
         <TextInput
+          ref={ref}
           placeholderTextColor={colors.contentMuted}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          onFocus={(event) => {
+            setFocused(true);
+            onFocus?.(event);
+          }}
+          onBlur={(event) => {
+            setFocused(false);
+            onBlur?.(event);
+          }}
           style={[
             typeStyle('body', '600'),
             {
@@ -610,7 +620,7 @@ export function Field({ label, error, hint, trailing, style, ...rest }: FieldPro
       ) : null}
     </Column>
   );
-}
+});
 
 /* ─────────────────────────── States ─────────────────────────── */
 

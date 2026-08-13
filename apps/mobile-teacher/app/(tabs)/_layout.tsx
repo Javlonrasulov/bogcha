@@ -1,6 +1,6 @@
-import { DemoBanner, TabBarIcon, fonts, useI18n, useTheme } from '@bogcha/mobile-core';
+import { TabBarIcon, fonts, useI18n, useTheme } from '@bogcha/mobile-core';
 import { Tabs } from 'expo-router';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabsLayout() {
@@ -11,8 +11,6 @@ export default function TabsLayout() {
   const tabHeight = 62 + bottomPad;
 
   return (
-    <View style={{ flex: 1 }}>
-      <DemoBanner />
       <Tabs
         screenOptions={{
           headerShown: false,
@@ -74,6 +72,5 @@ export default function TabsLayout() {
           }}
         />
       </Tabs>
-    </View>
   );
 }

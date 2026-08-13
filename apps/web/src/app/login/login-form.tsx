@@ -7,20 +7,12 @@ import { loginAction, type LoginState } from '../actions/auth';
 import { useT } from '../../i18n/client';
 import { cn } from '../../lib/utils';
 
-export interface DemoAccount {
-  label: string;
-  identifier: string;
-  password: string;
-}
-
 export function LoginForm({
   next,
   reason,
-  demoAccounts,
 }: {
   next?: string;
   reason?: string;
-  demoAccounts: DemoAccount[];
 }) {
   const t = useT();
   const [state, formAction] = useActionState<LoginState, FormData>(loginAction, {});
@@ -88,34 +80,6 @@ export function LoginForm({
 
         <SubmitButton idle={t.auth.signIn} busy={t.auth.signingIn} />
       </form>
-
-      {demoAccounts.length > 0 ? (
-        <div className="mt-8 rounded-2xl border border-line bg-surface-muted/50 p-4">
-          <p className="text-xs font-semibold text-content">{t.auth.demoTitle}</p>
-          <p className="mt-0.5 text-[0.7rem] text-content-muted">{t.auth.demoHint}</p>
-          <div className="mt-3 grid grid-cols-2 gap-1.5">
-            {demoAccounts.map((account) => (
-              <button
-                key={account.identifier}
-                type="button"
-                onClick={() => {
-                  setIdentifier(account.identifier);
-                  setPassword(account.password);
-                }}
-                className={cn(
-                  'rounded-xl bg-surface px-2.5 py-2 text-left text-xs ring-1 ring-inset ring-line transition-all hover:-translate-y-0.5 hover:ring-brand/40',
-                  identifier === account.identifier && 'ring-brand/60',
-                )}
-              >
-                <span className="block font-medium text-content">{account.label}</span>
-                <span className="tabular block text-[0.65rem] text-content-muted">
-                  {account.identifier}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

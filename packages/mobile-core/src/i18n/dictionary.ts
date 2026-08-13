@@ -44,10 +44,6 @@ export const uzLatn = {
     signingIn: 'Kirilmoqda…',
     signOutConfirm: 'Tizimdan chiqmoqchimisiz?',
     wrongRole: "Bu ilova sizning rolingiz uchun mo'ljallanmagan",
-    demoMode: "Demo rejim",
-    demoHint: "Server ulanmasa ham dizayn va ekranlarni ko'rish uchun",
-    demoEnter: "Demo rejimda kirish",
-    demoBanner: "Demo rejim — namuna ma'lumotlar",
   },
   sync: {
     online: 'Onlayn',
@@ -333,10 +329,6 @@ const uzCyrl: Dictionary = {
     signingIn: 'Кирилмоқда…',
     signOutConfirm: 'Тизимдан чиқмоқчимисиз?',
     wrongRole: 'Бу илова сизнинг ролингиз учун мўлжалланмаган',
-    demoMode: 'Демо режим',
-    demoHint: 'Сервер уланмаса ҳам дизайн ва экранларни кўриш учун',
-    demoEnter: 'Демо режимда кириш',
-    demoBanner: 'Демо режим — намуна маълумотлар',
   },
   sync: {
     online: 'Онлайн',
@@ -617,10 +609,6 @@ const ru: Dictionary = {
     signingIn: 'Вход…',
     signOutConfirm: 'Выйти из системы?',
     wrongRole: 'Это приложение не предназначено для вашей роли',
-    demoMode: 'Демо-режим',
-    demoHint: 'Чтобы посмотреть дизайн без подключения к серверу',
-    demoEnter: 'Войти в демо-режиме',
-    demoBanner: 'Демо-режим — примерные данные',
   },
   sync: {
     online: 'Онлайн',

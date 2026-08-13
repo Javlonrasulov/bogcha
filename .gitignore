@@ -25,3 +25,6 @@ web-build/
 
 uploads/
 backups/
+
+# Local Netlify folder
+.netlify

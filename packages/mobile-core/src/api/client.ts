@@ -1,5 +1,4 @@
-import { clearTokens, readDemoProfile, readTokens, saveTokens, type StoredTokens } from './session';
-import { resolveDemoResponse } from './demo-data';
+import { clearTokens, readTokens, saveTokens, type StoredTokens } from './session';
 
 /**
  * Mobil API mijozi. Access token muddati tugasa avtomatik `refresh` qiladi va
@@ -50,15 +49,6 @@ export class ApiClient {
   }
 
   async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-    // Login/refresh kabi anonymous so'rovlar har doim haqiqiy API ga ketadi —
-    // aks holda eski demo profil real ma'lumotni bloklab qo'yardi.
-    if (!options.anonymous) {
-      const demoProfile = await readDemoProfile();
-      if (demoProfile) {
-        return resolveDemoResponse(path, options.method ?? 'GET', demoProfile) as T;
-      }
-    }
-
     const response = await this.send(path, options);
 
     if (response.status === 401 && !options.anonymous) {

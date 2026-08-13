@@ -10,9 +10,6 @@ import { Platform } from 'react-native';
 const ACCESS_KEY = 'bogcha.accessToken';
 const REFRESH_KEY = 'bogcha.refreshToken';
 const DEVICE_KEY = 'bogcha.deviceId';
-const DEMO_PROFILE_KEY = 'bogcha.demoProfile';
-
-export type DemoProfile = 'admin' | 'teacher';
 
 const canUseSecureStore = Platform.OS !== 'web';
 
@@ -53,27 +50,7 @@ export async function readTokens(): Promise<StoredTokens | null> {
 }
 
 export async function clearTokens(): Promise<void> {
-  await Promise.all([
-    removeItem(ACCESS_KEY),
-    removeItem(REFRESH_KEY),
-    AsyncStorage.removeItem(DEMO_PROFILE_KEY),
-  ]);
-}
-
-export async function saveDemoProfile(profile: DemoProfile): Promise<void> {
-  await AsyncStorage.setItem(DEMO_PROFILE_KEY, profile);
-  await saveTokens({ accessToken: `demo-${profile}`, refreshToken: `demo-${profile}-refresh` });
-}
-
-export async function readDemoProfile(): Promise<DemoProfile | null> {
-  const value = await AsyncStorage.getItem(DEMO_PROFILE_KEY);
-  if (value === 'admin' || value === 'teacher') return value;
-  return null;
-}
-
-/** Haqiqiy login oldidan demo kalitini olib tashlash. */
-export async function clearDemoProfile(): Promise<void> {
-  await AsyncStorage.removeItem(DEMO_PROFILE_KEY);
+  await Promise.all([removeItem(ACCESS_KEY), removeItem(REFRESH_KEY)]);
 }
 
 /** Qurilma identifikatori — sessiyalarni ajratish va offline navbat kalitlari uchun. */

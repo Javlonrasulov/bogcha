@@ -25,7 +25,6 @@ export * from './ui/primitives';
 export * from './ui/components';
 export * from './ui/charts';
 export * from './ui/status-meta';
-export * from './ui/demo-banner';
 export * from './ui/hero-banner';
 export * from './ui/locale-switcher';
 export * from './ui/notification-card';

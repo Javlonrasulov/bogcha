@@ -55,7 +55,7 @@ function resolveSocketUrl(apiBaseUrl: string): string {
  * qurilma batareyasi va mobil trafik behuda sarflanadi.
  */
 export function RealtimeProvider({ children }: { children: ReactNode }) {
-  const { api, user, isDemo } = useAuth();
+  const { api, user } = useAuth();
   const [connected, setConnected] = useState(false);
   const [active, setActive] = useState(() => AppState.currentState !== 'background');
 
@@ -70,7 +70,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!user || !active || isDemo) return;
+    if (!user || !active) return;
 
     let socket: Socket | null = null;
     let cancelled = false;
@@ -103,7 +103,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       socketRef.current = null;
       setConnected(false);
     };
-  }, [api, user, active, isDemo]);
+  }, [api, user, active]);
 
   const value = useMemo<RealtimeContextValue>(
     () => ({

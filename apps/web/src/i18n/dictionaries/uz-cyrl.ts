@@ -133,8 +133,6 @@ export const uzCyrl: Dictionary = {
     signOut: 'Чиқиш',
     invalid: 'Телефон ёки парол нотўғри',
     expired: 'Сессия муддати тугади, қайтадан киринг',
-    demoTitle: 'Демо аккаунтлар',
-    demoHint: 'Босиб қўйиш учун танланг',
     profile: 'Профил',
     changePassword: 'Паролни ўзгартириш',
     currentPassword: 'Жорий парол',

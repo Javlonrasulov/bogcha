@@ -16,27 +16,14 @@ import {
   type Role,
 } from '@bogcha/shared';
 import { ApiClient, ApiError } from './client';
-import { createDemoUser } from './demo-data';
-import {
-  clearDemoProfile,
-  clearTokens,
-  getDeviceId,
-  readDemoProfile,
-  readTokens,
-  saveDemoProfile,
-  saveTokens,
-  type DemoProfile,
-} from './session';
+import { clearTokens, getDeviceId, readTokens, saveTokens } from './session';
 
 interface AuthContextValue {
   api: ApiClient;
   user: AuthenticatedUser | null;
-  /** Demo rejim — backend ulanishi shart emas. */
-  isDemo: boolean;
   /** Boshlang'ich sessiya tekshiruvi tugamaguncha `true`. */
   loading: boolean;
   signIn: (identifier: string, password: string) => Promise<{ ok: true } | { ok: false; error: string }>;
-  signInDemo: () => Promise<{ ok: true }>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
   can: (...permissions: Permission[]) => boolean;
@@ -47,16 +34,12 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({
   baseUrl,
-  demoProfile = 'admin',
   children,
 }: {
   baseUrl: string;
-  /** Ilova turi: admin yoki tarbiyachi demo foydalanuvchisi. */
-  demoProfile?: DemoProfile;
   children: ReactNode;
 }) {
   const [user, setUser] = useState<AuthenticatedUser | null>(null);
-  const [isDemo, setIsDemo] = useState(false);
   const [loading, setLoading] = useState(true);
   const expiredRef = useRef<() => void>(() => undefined);
 
@@ -68,19 +51,10 @@ export function AuthProvider({
   useEffect(() => {
     expiredRef.current = () => {
       setUser(null);
-      setIsDemo(false);
     };
   }, []);
 
   const loadUser = useCallback(async () => {
-    const activeDemo = await readDemoProfile();
-    if (activeDemo) {
-      setUser(createDemoUser(activeDemo));
-      setIsDemo(true);
-      return;
-    }
-
-    setIsDemo(false);
     const tokens = await readTokens();
     if (!tokens) {
       setUser(null);
@@ -103,10 +77,6 @@ export function AuthProvider({
   const signIn = useCallback<AuthContextValue['signIn']>(
     async (identifier, password) => {
       try {
-        // Eski demo sessiya real API ni yopib qo'ymasligi uchun avval tozalanadi.
-        await clearDemoProfile();
-        setIsDemo(false);
-
         const deviceId = await getDeviceId();
         const session = await api.post<AuthSession>(
           '/auth/login',
@@ -125,41 +95,29 @@ export function AuthProvider({
     [api],
   );
 
-  const signInDemo = useCallback(async (): Promise<{ ok: true }> => {
-    await saveDemoProfile(demoProfile);
-    setUser(createDemoUser(demoProfile));
-    setIsDemo(true);
-    return { ok: true };
-  }, [demoProfile]);
-
   const signOut = useCallback(async () => {
-    if (!isDemo) {
-      const tokens = await readTokens();
-      try {
-        if (tokens) await api.post('/auth/logout', { refreshToken: tokens.refreshToken });
-      } catch {
-        // Chiqish serverga yetmasa ham lokal sessiya tozalanadi.
-      }
+    const tokens = await readTokens();
+    try {
+      if (tokens) await api.post('/auth/logout', { refreshToken: tokens.refreshToken });
+    } catch {
+      // Chiqish serverga yetmasa ham lokal sessiya tozalanadi.
     }
     await clearTokens();
     setUser(null);
-    setIsDemo(false);
-  }, [api, isDemo]);
+  }, [api]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       api,
       user,
-      isDemo,
       loading,
       signIn,
-      signInDemo,
       signOut,
       refreshUser: loadUser,
       can: (...permissions) => hasAnyPermission(user?.permissions ?? [], permissions),
       hasRole: (...roles) => roles.some((role) => user?.roles.includes(role)),
     }),
-    [api, user, isDemo, loading, signIn, signInDemo, signOut, loadUser],
+    [api, user, loading, signIn, signOut, loadUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -58,7 +58,7 @@ function ThemedStatusBar() {
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <AppProviders baseUrl={API_URL} demoProfile="teacher">
+      <AppProviders baseUrl={API_URL}>
         <ThemedStatusBar />
         <AuthGate />
       </AppProviders>

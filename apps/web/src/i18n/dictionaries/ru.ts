@@ -133,8 +133,6 @@ export const ru: Dictionary = {
     signOut: 'Выйти',
     invalid: 'Неверный телефон или пароль',
     expired: 'Сессия истекла, войдите заново',
-    demoTitle: 'Демо аккаунты',
-    demoHint: 'Нажмите, чтобы подставить',
     profile: 'Профиль',
     changePassword: 'Изменить пароль',
     currentPassword: 'Текущий пароль',
