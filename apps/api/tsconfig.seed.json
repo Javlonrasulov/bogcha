@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "./dist-seed",
+    "noUnusedLocals": false
+  },
+  "include": [
+    "src/database/seed.ts",
+    "src/database/seed-data.ts",
+    "src/config/typeorm.config.ts",
+    "src/entities/**/*"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

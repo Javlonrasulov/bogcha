@@ -1,0 +1,407 @@
+@import 'tailwindcss';
+
+/*
+ * Bog'cha Boshqaruv Tizimi — dizayn tizimi.
+ * Premium SaaS + Modern Glass UI: yumshoq radiuslar, nozik soyalar,
+ * katta whitespace, ko'zni charchatmaydigan kontrast.
+ */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  /* Yorug' tema */
+  --canvas: 220 20% 97%;
+  --canvas-accent: 226 60% 96%;
+  --surface: 0 0% 100%;
+  --surface-muted: 220 20% 98%;
+  --surface-raised: 0 0% 100%;
+  --border: 220 16% 90%;
+  --border-strong: 220 14% 82%;
+
+  --content: 222 32% 12%;
+  --content-secondary: 220 12% 38%;
+  --content-muted: 220 10% 54%;
+  --content-inverse: 0 0% 100%;
+
+  --brand: 243 75% 59%;
+  --brand-strong: 245 68% 51%;
+  --brand-soft: 243 100% 96%;
+  --brand-contrast: 0 0% 100%;
+
+  --accent: 268 72% 60%;
+  --success: 152 62% 40%;
+  --success-soft: 152 60% 94%;
+  --warning: 36 92% 48%;
+  --warning-soft: 40 96% 94%;
+  --danger: 353 76% 52%;
+  --danger-soft: 353 90% 96%;
+  --info: 205 88% 47%;
+  --info-soft: 205 90% 95%;
+
+  --chart-1: 243 75% 59%;
+  --chart-2: 268 72% 60%;
+  --chart-3: 152 62% 40%;
+  --chart-4: 36 92% 48%;
+  --chart-5: 199 89% 48%;
+  --chart-6: 353 76% 52%;
+
+  --glass-bg: 0 0% 100%;
+  --glass-opacity: 0.72;
+  --ring: 243 75% 59%;
+
+  --shadow-color: 222 40% 30%;
+  --sidebar-width: 17rem;
+  --sidebar-width-collapsed: 4.75rem;
+  --topbar-height: 3.75rem;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --topbar-height: 4.25rem;
+  }
+}
+
+.dark {
+  /* Qorong'i tema */
+  --canvas: 224 32% 7%;
+  --canvas-accent: 232 40% 10%;
+  --surface: 224 26% 11%;
+  --surface-muted: 224 24% 13%;
+  --surface-raised: 224 24% 14%;
+  --border: 224 18% 21%;
+  --border-strong: 224 16% 28%;
+
+  --content: 210 30% 96%;
+  --content-secondary: 218 14% 72%;
+  --content-muted: 220 10% 58%;
+  --content-inverse: 224 32% 8%;
+
+  --brand: 245 88% 70%;
+  --brand-strong: 245 84% 63%;
+  --brand-soft: 245 60% 18%;
+  --brand-contrast: 226 40% 10%;
+
+  --accent: 270 82% 74%;
+  --success: 152 58% 50%;
+  --success-soft: 154 50% 15%;
+  --warning: 38 94% 60%;
+  --warning-soft: 34 60% 16%;
+  --danger: 353 88% 66%;
+  --danger-soft: 353 50% 18%;
+  --info: 203 90% 62%;
+  --info-soft: 205 60% 16%;
+
+  --chart-1: 245 88% 70%;
+  --chart-2: 270 82% 74%;
+  --chart-3: 152 58% 50%;
+  --chart-4: 38 94% 60%;
+  --chart-5: 199 90% 62%;
+  --chart-6: 353 88% 66%;
+
+  --glass-bg: 224 30% 14%;
+  --glass-opacity: 0.66;
+  --ring: 245 88% 70%;
+
+  --shadow-color: 224 60% 3%;
+}
+
+@theme inline {
+  --color-canvas: hsl(var(--canvas));
+  --color-canvas-accent: hsl(var(--canvas-accent));
+  --color-surface: hsl(var(--surface));
+  --color-surface-muted: hsl(var(--surface-muted));
+  --color-surface-raised: hsl(var(--surface-raised));
+  --color-line: hsl(var(--border));
+  --color-line-strong: hsl(var(--border-strong));
+
+  --color-content: hsl(var(--content));
+  --color-content-secondary: hsl(var(--content-secondary));
+  --color-content-muted: hsl(var(--content-muted));
+  --color-content-inverse: hsl(var(--content-inverse));
+
+  --color-brand: hsl(var(--brand));
+  --color-brand-strong: hsl(var(--brand-strong));
+  --color-brand-soft: hsl(var(--brand-soft));
+  --color-brand-contrast: hsl(var(--brand-contrast));
+  --color-accent: hsl(var(--accent));
+
+  --color-success: hsl(var(--success));
+  --color-success-soft: hsl(var(--success-soft));
+  --color-warning: hsl(var(--warning));
+  --color-warning-soft: hsl(var(--warning-soft));
+  --color-danger: hsl(var(--danger));
+  --color-danger-soft: hsl(var(--danger-soft));
+  --color-info: hsl(var(--info));
+  --color-info-soft: hsl(var(--info-soft));
+
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+  --color-chart-6: hsl(var(--chart-6));
+
+  --font-sans:
+    'Inter', 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial,
+    sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Cascadia Mono', Consolas, monospace;
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+
+  --shadow-xs: 0 1px 2px 0 hsl(var(--shadow-color) / 0.05);
+  --shadow-soft:
+    0 1px 2px hsl(var(--shadow-color) / 0.04), 0 8px 24px -12px hsl(var(--shadow-color) / 0.12);
+  --shadow-card:
+    0 1px 3px hsl(var(--shadow-color) / 0.05), 0 12px 32px -16px hsl(var(--shadow-color) / 0.16);
+  --shadow-lifted:
+    0 2px 4px hsl(var(--shadow-color) / 0.06), 0 24px 56px -24px hsl(var(--shadow-color) / 0.24);
+  --shadow-glow: 0 12px 40px -12px hsl(var(--brand) / 0.45);
+
+  --animate-fade-in: fade-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-rise: rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-scale-in: scale-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+  --animate-pulse-ring: pulse-ring 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes pulse-ring {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0;
+    transform: scale(2.1);
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--color-line);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-content);
+    font-family: var(--font-sans);
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'ss01';
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+
+  /* Fon: nozik gradient nur — premium hissiyot beradi, lekin matnni buzmaydi. */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(60rem 30rem at 12% -8%, hsl(var(--brand) / 0.1), transparent 70%),
+      radial-gradient(48rem 26rem at 92% 4%, hsl(var(--accent) / 0.09), transparent 72%);
+  }
+
+  ::selection {
+    background-color: hsl(var(--brand) / 0.22);
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring) / 0.7);
+    outline-offset: 2px;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    letter-spacing: -0.015em;
+    font-weight: 650;
+  }
+
+  /* Nozik skrollbar — kontent asosiy rolda qolsin. */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--content-muted) / 0.28);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--content-muted) / 0.45);
+    background-clip: content-box;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    font: inherit;
+    color: inherit;
+  }
+}
+
+/* ── Utility'lar ─────────────────────────────────────────── */
+
+@utility glass {
+  background-color: hsl(var(--glass-bg) / var(--glass-opacity));
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid hsl(var(--border) / 0.7);
+}
+
+@utility surface-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+}
+
+@utility text-gradient-brand {
+  background-image: linear-gradient(
+    100deg,
+    hsl(var(--brand)) 0%,
+    hsl(var(--accent)) 55%,
+    hsl(var(--info)) 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+@utility bg-gradient-brand {
+  background-image: linear-gradient(135deg, hsl(var(--brand)) 0%, hsl(var(--accent)) 100%);
+}
+
+@utility skeleton {
+  background-image: linear-gradient(
+    90deg,
+    hsl(var(--content-muted) / 0.09) 25%,
+    hsl(var(--content-muted) / 0.18) 37%,
+    hsl(var(--content-muted) / 0.09) 63%
+  );
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
+  border-radius: var(--radius-md);
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Chop etishda faqat kontent qolsin (hisobotlarni PDF qilish uchun). */
+@media print {
+  .print-hidden,
+  aside,
+  header {
+    display: none !important;
+  }
+
+  body::before {
+    display: none;
+  }
+
+  /* Chop etish har doim yorug' temada — siyoh tejaladi va o'qish oson. */
+  html,
+  body {
+    background: #fff !important;
+    color: #0f172a !important;
+    color-scheme: light;
+  }
+
+  main {
+    padding: 0 !important;
+  }
+
+  .surface-card,
+  .glass {
+    background: #fff !important;
+    box-shadow: none !important;
+    border: 1px solid #d8dee9 !important;
+    break-inside: avoid;
+  }
+
+  table {
+    width: 100% !important;
+    font-size: 11px;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tr {
+    break-inside: avoid;
+  }
+
+  @page {
+    margin: 12mm;
+  }
+}

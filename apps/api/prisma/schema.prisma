@@ -1,0 +1,1478 @@
+// Bog'cha Boshqaruv Tizimi — multi-tenant domen modeli.
+//
+// Tenant izolyatsiyasi: har bir biznes jadvalida `tenantId` bor va barcha so'rovlar
+// PrismaService dagi tenant guard orqali majburiy filtrlanadi. Filialga tegishli
+// ma'lumotlarda qo'shimcha `branchId` bo'ladi.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// PLATFORMA / TENANT
+// ─────────────────────────────────────────────────────────────
+
+enum PlanTier {
+  TRIAL
+  BASIC
+  PRO
+  ENTERPRISE
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  TRIAL_EXPIRED
+  ARCHIVED
+}
+
+model Plan {
+  id           String   @id @default(uuid()) @db.Uuid
+  tier         PlanTier @unique
+  name         String
+  monthlyPrice Decimal  @default(0) @db.Decimal(16, 2)
+  maxBranches  Int      @default(1)
+  maxChildren  Int      @default(100)
+  maxUsers     Int      @default(10)
+  features     Json     @default("{}")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenants Tenant[]
+}
+
+model Tenant {
+  id       String       @id @default(uuid()) @db.Uuid
+  name     String
+  slug     String       @unique
+  status   TenantStatus @default(ACTIVE)
+  planId   String?      @db.Uuid
+  plan     Plan?        @relation(fields: [planId], references: [id], onDelete: SetNull)
+  planEndsAt DateTime?
+
+  ownerFullName String?
+  contactPhone  String?
+  contactEmail  String?
+  logoUrl       String?
+  timezone      String  @default("Asia/Tashkent")
+  currency      String  @default("UZS")
+  locale        String  @default("uz")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  branches           Branch[]
+  users              User[]
+  groups             Group[]
+  children           Child[]
+  guardians          Guardian[]
+  attendance         AttendanceRecord[]
+  attendanceBatches  AttendanceBatch[]
+  productCategories  ProductCategory[]
+  products           Product[]
+  stockItems         StockItem[]
+  stockMovements     StockMovement[]
+  suppliers          Supplier[]
+  supplierPrices     SupplierPrice[]
+  purchaseOrders     PurchaseOrder[]
+  recipes            Recipe[]
+  menus              Menu[]
+  nutritionDays      NutritionDay[]
+  productDailyNorms  ProductDailyNorm[]
+  foodConsumptionActuals FoodConsumptionActual[]
+  foodStockChecks    FoodStockCheck[]
+  expenseCategories  ExpenseCategory[]
+  incomeCategories   IncomeCategory[]
+  expenses           Expense[]
+  incomes            Income[]
+  invoices           Invoice[]
+  payments           Payment[]
+  staff              Staff[]
+  staffAttendance    StaffAttendance[]
+  payrolls           Payroll[]
+  budgets            Budget[]
+  notifications      Notification[]
+  auditLogs          AuditLog[]
+  settings           TenantSettings?
+  refreshTokens      RefreshToken[]
+
+  @@index([status])
+}
+
+model TenantSettings {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @unique @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Oziq-ovqat normasi konfiguratsiyasi (TZ §9 — formula sozlanadigan bo'lsin).
+  normBaseHeadcount Int     @default(100)
+  normWastePercent  Decimal @default(0) @db.Decimal(5, 2)
+  normRoundingStep  Decimal @default(0) @db.Decimal(10, 3)
+  normRoundingMode  String  @default("NONE")
+  staffMealFactor   Decimal @default(0) @db.Decimal(5, 3)
+
+  // Anomaliya chegaralari (TZ §22).
+  anomalyThresholds Json @default("{}")
+
+  // Ish haqi va to'lov sozlamalari.
+  payrollTaxPercent Decimal @default(0) @db.Decimal(5, 2)
+  invoiceDueDay     Int     @default(10)
+  workdays          Int[]   @default([1, 2, 3, 4, 5, 6])
+  shiftStart        String  @default("08:00")
+  shiftEnd          String  @default("18:00")
+  lateGraceMinutes  Int     @default(10)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Branch {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name      String
+  code      String
+  address   String?
+  phone     String?
+  managerName String?
+  latitude  Decimal? @db.Decimal(9, 6)
+  longitude Decimal? @db.Decimal(9, 6)
+  capacity  Int      @default(0)
+  openedAt  DateTime?
+  isActive  Boolean  @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  groups          Group[]
+  children        Child[]
+  stockItems      StockItem[]
+  stockMovements  StockMovement[]
+  purchaseOrders  PurchaseOrder[]
+  menus           Menu[]
+  nutritionDays   NutritionDay[]
+  productDailyNorms ProductDailyNorm[]
+  foodConsumptionActuals FoodConsumptionActual[]
+  foodStockChecks FoodStockCheck[]
+  expenses        Expense[]
+  incomes         Income[]
+  invoices        Invoice[]
+  payments        Payment[]
+  staff           Staff[]
+  payrolls        Payroll[]
+  budgets         Budget[]
+  userBranches    UserBranch[]
+  attendanceBatches AttendanceBatch[]
+  notifications   Notification[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, isActive])
+}
+
+// ─────────────────────────────────────────────────────────────
+// FOYDALANUVCHI / RBAC
+// ─────────────────────────────────────────────────────────────
+
+enum Role {
+  SUPER_ADMIN
+  OWNER
+  ADMINISTRATOR
+  TEACHER
+  COOK
+  STOREKEEPER
+  ACCOUNTANT
+}
+
+model User {
+  id       String  @id @default(uuid()) @db.Uuid
+  // SUPER_ADMIN platforma darajasida — tenantga bog'lanmaydi.
+  tenantId String? @db.Uuid
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  fullName     String
+  email        String?
+  phone        String
+  passwordHash String
+  roles        Role[]  @default([])
+  avatarUrl    String?
+  locale       String  @default("uz")
+  isActive     Boolean @default(true)
+
+  // Refresh tokenlarni bir zarbada bekor qilish uchun (parol o'zgarganda oshiriladi).
+  tokenVersion Int       @default(0)
+  lastLoginAt  DateTime?
+  mustChangePassword Boolean @default(false)
+  failedLoginCount   Int     @default(0)
+  lockedUntil        DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  branches      UserBranch[]
+  groups        GroupTeacher[]
+  staff         Staff?
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
+  notifications NotificationRecipient[]
+  approvedOrders PurchaseOrder[] @relation("PurchaseApprover")
+  createdOrders  PurchaseOrder[] @relation("PurchaseCreator")
+  submittedBatches AttendanceBatch[]
+
+  @@unique([tenantId, phone])
+  @@unique([tenantId, email])
+  @@index([tenantId, isActive])
+}
+
+// Foydalanuvchining ruxsat etilgan filiallari. Yozuv bo'lmasa — tenantdagi barchasi.
+model UserBranch {
+  userId   String @db.Uuid
+  branchId String @db.Uuid
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@id([userId, branchId])
+  @@index([branchId])
+}
+
+model RefreshToken {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String? @db.Uuid
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId   String @db.Uuid
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Token faqat hash sifatida saqlanadi.
+  tokenHash String   @unique
+  deviceId  String?
+  userAgent String?
+  ipAddress String?
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId, revokedAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// GURUHLAR VA BOLALAR
+// ─────────────────────────────────────────────────────────────
+
+model Group {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId String @db.Uuid
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  name       String
+  ageFrom    Int     @default(3)
+  ageTo      Int     @default(4)
+  capacity   Int     @default(25)
+  colorToken String?
+  isActive   Boolean @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  children          Child[]
+  teachers          GroupTeacher[]
+  attendanceBatches AttendanceBatch[]
+  attendance        AttendanceRecord[]
+
+  @@unique([branchId, name])
+  @@index([tenantId, branchId])
+}
+
+model GroupTeacher {
+  groupId String @db.Uuid
+  userId  String @db.Uuid
+  group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isPrimary Boolean @default(false)
+
+  @@id([groupId, userId])
+  @@index([userId])
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum ChildStatus {
+  ACTIVE
+  ON_VACATION
+  TEMPORARILY_ABSENT
+  WITHDRAWN
+}
+
+model Child {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId String @db.Uuid
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  groupId  String? @db.Uuid
+  group    Group?  @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
+  firstName  String
+  lastName   String
+  middleName String?
+  birthDate  DateTime @db.Date
+  gender     Gender
+  avatarUrl  String?
+
+  enrolledAt   DateTime    @db.Date
+  withdrawnAt  DateTime?   @db.Date
+  status       ChildStatus @default(ACTIVE)
+
+  monthlyFee      Decimal @default(0) @db.Decimal(16, 2)
+  discountPercent Decimal @default(0) @db.Decimal(5, 2)
+  discountAmount  Decimal @default(0) @db.Decimal(16, 2)
+  discountReason  String?
+
+  address      String?
+  medicalNotes String?
+  note         String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  guardians  Guardian[]
+  attendance AttendanceRecord[]
+  invoices   Invoice[]
+  payments   Payment[]
+
+  @@index([tenantId, branchId, status])
+  @@index([groupId, status])
+  @@index([lastName, firstName])
+}
+
+model Guardian {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  childId  String @db.Uuid
+  child    Child  @relation(fields: [childId], references: [id], onDelete: Restrict)
+
+  fullName       String
+  relation       String
+  phone          String
+  secondaryPhone String?
+  workplace      String?
+  isPrimary      Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([childId])
+  @@index([tenantId, phone])
+}
+
+// ─────────────────────────────────────────────────────────────
+// DAVOMAT
+// ─────────────────────────────────────────────────────────────
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT_EXCUSED
+  ABSENT_UNEXCUSED
+  ON_VACATION
+  SICK
+}
+
+// Guruhning bir kunlik davomat sessiyasi. Offline sinxronizatsiyada
+// `idempotencyKey` takroriy yuborishni bloklaydi (TZ §41).
+model AttendanceBatch {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId String @db.Uuid
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  groupId  String @db.Uuid
+  group    Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  date            DateTime @db.Date
+  submittedById   String?  @db.Uuid
+  submittedBy     User?    @relation(fields: [submittedById], references: [id], onDelete: SetNull)
+  submittedAt     DateTime @default(now())
+  clientRecordedAt DateTime?
+  idempotencyKey  String?
+  syncedFromOffline Boolean @default(false)
+
+  totalCount    Int @default(0)
+  presentCount  Int @default(0)
+  absentCount   Int @default(0)
+
+  records AttendanceRecord[]
+
+  @@unique([groupId, date])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, date])
+}
+
+model AttendanceRecord {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  childId  String @db.Uuid
+  child    Child  @relation(fields: [childId], references: [id], onDelete: Restrict)
+  groupId  String? @db.Uuid
+  group    Group?  @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  batchId  String? @db.Uuid
+  batch    AttendanceBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  date      DateTime         @db.Date
+  status    AttendanceStatus
+  arrivedAt DateTime?
+  leftAt    DateTime?
+  note      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([childId, date])
+  @@index([tenantId, date, status])
+  @@index([groupId, date])
+}
+
+// ─────────────────────────────────────────────────────────────
+// OMBOR
+// ─────────────────────────────────────────────────────────────
+
+enum Unit {
+  KG
+  GRAM
+  LITER
+  MILLILITER
+  PIECE
+  BOX
+  PACK
+  BUNDLE
+  OTHER
+}
+
+model ProductCategory {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name     String
+  sortOrder Int    @default(0)
+  isActive Boolean @default(true)
+
+  products Product[]
+
+  @@unique([tenantId, name])
+}
+
+model Product {
+  id         String  @id @default(uuid()) @db.Uuid
+  tenantId   String  @db.Uuid
+  tenant     Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  categoryId String? @db.Uuid
+  category   ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  name String
+  unit Unit
+
+  // Joriy tannarx — har kirimda o'rtacha tortilgan qiymat bilan yangilanadi.
+  unitCost     Decimal  @default(0) @db.Decimal(16, 2)
+  minQuantity  Decimal  @default(0) @db.Decimal(14, 3)
+  maxQuantity  Decimal? @db.Decimal(14, 3)
+  packageSize  Decimal? @db.Decimal(14, 3)
+  shelfLifeDays Int?
+  barcode      String?
+  isActive     Boolean  @default(true)
+
+  defaultSupplierId String?   @db.Uuid
+  defaultSupplier   Supplier? @relation(fields: [defaultSupplierId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  stockItems     StockItem[]
+  stockMovements StockMovement[]
+  recipeItems    RecipeItem[]
+  purchaseItems  PurchaseOrderItem[]
+  supplierPrices SupplierPrice[]
+  nutritionLines NutritionDayLine[]
+  productDailyNorms ProductDailyNorm[]
+  foodConsumptionActuals FoodConsumptionActual[]
+  foodStockChecks FoodStockCheck[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, categoryId, isActive])
+}
+
+// Filial bo'yicha joriy qoldiq. Barcha harakatlar shu yozuvni transaksiya ichida yangilaydi.
+model StockItem {
+  id        String  @id @default(uuid()) @db.Uuid
+  tenantId  String  @db.Uuid
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId  String  @db.Uuid
+  branch    Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  productId String  @db.Uuid
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  quantity  Decimal @default(0) @db.Decimal(14, 3)
+  unitCost  Decimal @default(0) @db.Decimal(16, 2)
+  // quantity * unitCost — ombor qiymatini tez hisoblash uchun saqlanadi.
+  totalValue Decimal @default(0) @db.Decimal(18, 2)
+
+  lastMovementAt DateTime?
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([branchId, productId])
+  @@index([tenantId, branchId])
+}
+
+enum StockMovementType {
+  IN
+  OUT
+  RETURN
+  ADJUSTMENT
+  WRITE_OFF
+  TRANSFER_IN
+  TRANSFER_OUT
+}
+
+enum StockMovementSource {
+  MANUAL
+  PURCHASE
+  NUTRITION_CONSUMPTION
+  INVENTORY_COUNT
+  TRANSFER
+}
+
+model StockMovement {
+  id        String  @id @default(uuid()) @db.Uuid
+  tenantId  String  @db.Uuid
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId  String  @db.Uuid
+  branch    Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  productId String  @db.Uuid
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  type   StockMovementType
+  source StockMovementSource @default(MANUAL)
+
+  quantity  Decimal @db.Decimal(14, 3)
+  unitCost  Decimal @default(0) @db.Decimal(16, 2)
+  totalCost Decimal @default(0) @db.Decimal(18, 2)
+
+  // Harakatdan keyingi qoldiq — tarixni qayta hisoblamasdan ko'rish uchun.
+  balanceAfter Decimal @db.Decimal(14, 3)
+
+  date           DateTime @db.Date
+  reason         String?
+  documentNumber String?
+  attachmentUrl  String?
+
+  supplierId String?   @db.Uuid
+  supplier   Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+
+  purchaseOrderId String? @db.Uuid
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  nutritionDayId  String? @db.Uuid
+  nutritionDay    NutritionDay? @relation(fields: [nutritionDayId], references: [id], onDelete: SetNull)
+  expenseId       String? @db.Uuid
+  expense         Expense? @relation(fields: [expenseId], references: [id], onDelete: SetNull)
+
+  createdById String?  @db.Uuid
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId, branchId, date])
+  @@index([productId, date])
+  @@index([nutritionDayId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// YETKAZIB BERUVCHILAR VA XARIDLAR
+// ─────────────────────────────────────────────────────────────
+
+model Supplier {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name          String
+  phone         String
+  contactPerson String?
+  address       String?
+  inn           String?
+  bankAccount   String?
+  note          String?
+  isActive      Boolean @default(true)
+
+  // Yetkazib beruvchiga qarzdorlik (to'lanmagan xaridlar).
+  balance Decimal @default(0) @db.Decimal(18, 2)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  products       Product[]
+  purchaseOrders PurchaseOrder[]
+  prices         SupplierPrice[]
+  stockMovements StockMovement[]
+  expenses       Expense[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, isActive])
+}
+
+// Narx tarixi (TZ §16) — narx oshishini aniqlash uchun.
+model SupplierPrice {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @db.Uuid
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplierId String   @db.Uuid
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  productId  String   @db.Uuid
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  price     Decimal  @db.Decimal(16, 2)
+  date      DateTime @db.Date
+  createdAt DateTime @default(now())
+
+  @@index([supplierId, productId, date])
+  @@index([tenantId, productId, date])
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  ORDERED
+  RECEIVED
+  CANCELLED
+}
+
+model PurchaseOrder {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId String @db.Uuid
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  number     String
+  status     PurchaseOrderStatus @default(DRAFT)
+  neededBy   DateTime?           @db.Date
+  orderedAt  DateTime?           @db.Date
+  receivedAt DateTime?           @db.Date
+
+  supplierId String?   @db.Uuid
+  supplier   Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+
+  totalAmount Decimal @default(0) @db.Decimal(18, 2)
+  isPaid      Boolean @default(false)
+
+  /** Qabul qilish idempotentligi — parallel/takroriy receive. */
+  receiveIdempotencyKey String?
+
+  // Avtomatik xarid ro'yxatidan yaratilgan bo'lsa (TZ §15).
+  generatedFromPlan Boolean @default(false)
+
+  createdById String? @db.Uuid
+  createdBy   User?   @relation("PurchaseCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  approvedById String? @db.Uuid
+  approvedBy   User?   @relation("PurchaseApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedAt   DateTime?
+  approvalComment String?
+
+  documentNumber  String?
+  receiptImageUrl String?
+  note            String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items          PurchaseOrderItem[]
+  stockMovements StockMovement[]
+  expenses       Expense[]
+
+  @@unique([tenantId, number])
+  @@unique([tenantId, receiveIdempotencyKey])
+  @@index([tenantId, branchId, status])
+  @@index([supplierId, receivedAt])
+}
+
+model PurchaseOrderItem {
+  id              String        @id @default(uuid()) @db.Uuid
+  purchaseOrderId String        @db.Uuid
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  productId       String        @db.Uuid
+  product         Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  quantity         Decimal  @db.Decimal(14, 3)
+  receivedQuantity Decimal? @db.Decimal(14, 3)
+  unitPrice        Decimal  @db.Decimal(16, 2)
+  totalPrice       Decimal  @default(0) @db.Decimal(18, 2)
+  note             String?
+
+  @@index([purchaseOrderId])
+  @@index([productId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// RETSEPT / MENYU / OZIQLANISH
+// ─────────────────────────────────────────────────────────────
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  SNACK
+}
+
+enum Weekday {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+model Recipe {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name     String
+  mealType MealType
+
+  // Retsept necha bola uchun yozilgan (TZ §11 — 100 bola uchun).
+  baseHeadcount Int     @default(100)
+  wastePercent  Decimal @default(0) @db.Decimal(5, 2)
+
+  caloriesPerPortion Decimal? @db.Decimal(8, 2)
+  instructions       String?
+  isActive           Boolean  @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  items     RecipeItem[]
+  menuSlots MenuSlotRecipe[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, mealType, isActive])
+}
+
+model RecipeItem {
+  id        String  @id @default(uuid()) @db.Uuid
+  recipeId  String  @db.Uuid
+  recipe    Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  productId String  @db.Uuid
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  // Bazaviy bolalar soni uchun miqdor.
+  quantity Decimal @db.Decimal(14, 3)
+  unit     Unit
+
+  @@unique([recipeId, productId])
+  @@index([productId])
+}
+
+model Menu {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId String @db.Uuid
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  name      String
+  validFrom DateTime  @db.Date
+  validTo   DateTime? @db.Date
+  isActive  Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  slots MenuSlot[]
+
+  @@index([tenantId, branchId, isActive])
+  @@index([branchId, validFrom])
+}
+
+model MenuSlot {
+  id       String   @id @default(uuid()) @db.Uuid
+  menuId   String   @db.Uuid
+  menu     Menu     @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  weekday  Weekday
+  mealType MealType
+
+  recipes MenuSlotRecipe[]
+
+  @@unique([menuId, weekday, mealType])
+}
+
+model MenuSlotRecipe {
+  menuSlotId String   @db.Uuid
+  recipeId   String   @db.Uuid
+  menuSlot   MenuSlot @relation(fields: [menuSlotId], references: [id], onDelete: Cascade)
+  recipe     Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@id([menuSlotId, recipeId])
+  @@index([recipeId])
+}
+
+// Kunlik oziqlanish hisobi: davomat → norma → sarf → xarajat (TZ §47).
+model NutritionDay {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId String @db.Uuid
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  date DateTime @db.Date
+
+  plannedHeadcount Int
+  actualHeadcount  Int
+  headcountOverride Int?
+  overrideReason    String?
+
+  totalPlannedCost Decimal @default(0) @db.Decimal(18, 2)
+  totalActualCost  Decimal @default(0) @db.Decimal(18, 2)
+  totalSavedCost   Decimal @default(0) @db.Decimal(18, 2)
+  costPerChild     Decimal @default(0) @db.Decimal(16, 2)
+
+  // Yopilgandan keyin ombordan chiqim qilinadi va xarajat yoziladi.
+  isClosed   Boolean   @default(false)
+  closedAt   DateTime?
+  closedById String?   @db.Uuid
+
+  expenseId String?  @db.Uuid
+  expense   Expense? @relation(fields: [expenseId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lines          NutritionDayLine[]
+  stockMovements StockMovement[]
+
+  @@unique([branchId, date])
+  @@index([tenantId, date])
+}
+
+model NutritionDayLine {
+  id             String       @id @default(uuid()) @db.Uuid
+  nutritionDayId String       @db.Uuid
+  nutritionDay   NutritionDay @relation(fields: [nutritionDayId], references: [id], onDelete: Cascade)
+  productId      String       @db.Uuid
+  product        Product      @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  unit Unit
+
+  plannedQuantity Decimal @db.Decimal(14, 3)
+  actualQuantity  Decimal @db.Decimal(14, 3)
+  savedQuantity   Decimal @db.Decimal(14, 3)
+
+  unitCost    Decimal @default(0) @db.Decimal(16, 2)
+  plannedCost Decimal @default(0) @db.Decimal(18, 2)
+  actualCost  Decimal @default(0) @db.Decimal(18, 2)
+
+  // Qo'lda tuzatilgan bo'lsa sabab bilan saqlanadi (audit uchun).
+  wasOverridden   Boolean @default(false)
+  overrideReason  String?
+
+  @@unique([nutritionDayId, productId])
+  @@index([productId])
+}
+
+// 1 bolaga 1 kunlik mahsulot me'yori (sana bo'yicha versiyalanadi).
+model ProductDailyNorm {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId String @db.Uuid
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  productId String @db.Uuid
+  product  Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  /** 1 bola uchun 1 kunlik me'yor. */
+  quantityPerChild Decimal @db.Decimal(14, 3)
+  unit Unit
+  /** Shu sanadan boshlab kuchga kiradi. */
+  effectiveFrom DateTime @db.Date
+  note String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, branchId, productId, effectiveFrom])
+  @@index([branchId, effectiveFrom])
+}
+
+// Kunlik amaldagi mahsulot sarfi (me'yoriy hisobdan alohida saqlanadi).
+model FoodConsumptionActual {
+  id        String @id @default(uuid()) @db.Uuid
+  tenantId  String @db.Uuid
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId  String @db.Uuid
+  branch    Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  productId String @db.Uuid
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  date            DateTime @db.Date
+  actualQuantity  Decimal  @db.Decimal(14, 3)
+  unit            Unit
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([branchId, date, productId])
+  @@index([tenantId, branchId, date])
+}
+
+// Ombor tekshiruvi: real qoldiqni kiritib tizim hisobi bilan solishtirish.
+model FoodStockCheck {
+  id        String @id @default(uuid()) @db.Uuid
+  tenantId  String @db.Uuid
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId  String @db.Uuid
+  branch    Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  productId String @db.Uuid
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  checkDate        DateTime @db.Date
+  countedQuantity  Decimal  @db.Decimal(14, 3)
+  unit             Unit
+  note             String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([branchId, checkDate, productId])
+  @@index([tenantId, branchId, checkDate])
+}
+
+// ─────────────────────────────────────────────────────────────
+// MOLIYA
+// ─────────────────────────────────────────────────────────────
+
+enum ExpenseCategoryKind {
+  FOOD
+  PAYROLL
+  RENT
+  UTILITIES
+  TRANSPORT
+  STATIONERY
+  REPAIR
+  MEDICINE
+  TAX
+  MARKETING
+  OTHER
+}
+
+enum IncomeCategoryKind {
+  TUITION
+  EXTRA_SERVICE
+  ENROLLMENT_FEE
+  OTHER
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  BANK_TRANSFER
+  ONLINE
+}
+
+model ExpenseCategory {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name String
+  kind ExpenseCategoryKind
+  // Tizim yaratgan kategoriya (oziq-ovqat, ish haqi) — o'chirib bo'lmaydi.
+  isSystem Boolean @default(false)
+  isActive Boolean @default(true)
+
+  expenses    Expense[]
+  budgetLines BudgetLine[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, kind])
+}
+
+model IncomeCategory {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name     String
+  kind     IncomeCategoryKind
+  isSystem Boolean @default(false)
+  isActive Boolean @default(true)
+
+  incomes Income[]
+
+  @@unique([tenantId, name])
+}
+
+model Expense {
+  id         String          @id @default(uuid()) @db.Uuid
+  tenantId   String          @db.Uuid
+  tenant     Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId   String          @db.Uuid
+  branch     Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  categoryId String          @db.Uuid
+  category   ExpenseCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  amount        Decimal       @db.Decimal(18, 2)
+  date          DateTime      @db.Date
+  description   String?
+  paymentMethod PaymentMethod @default(CASH)
+  attachmentUrl String?
+
+  supplierId String?   @db.Uuid
+  supplier   Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+
+  purchaseOrderId String?        @db.Uuid
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  payrollId       String?        @db.Uuid
+  payroll         Payroll?       @relation(fields: [payrollId], references: [id], onDelete: SetNull)
+
+  // Avtomatik yaratilgan xarajatni qo'lda kiritilgandan ajratish.
+  isAutoGenerated Boolean @default(false)
+
+  createdById String?  @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  nutritionDays  NutritionDay[]
+  stockMovements StockMovement[]
+
+  @@index([tenantId, branchId, date])
+  @@index([categoryId, date])
+}
+
+model Income {
+  id         String         @id @default(uuid()) @db.Uuid
+  tenantId   String         @db.Uuid
+  tenant     Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId   String         @db.Uuid
+  branch     Branch         @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  categoryId String         @db.Uuid
+  category   IncomeCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  amount        Decimal       @db.Decimal(18, 2)
+  date          DateTime      @db.Date
+  description   String?
+  paymentMethod PaymentMethod @default(CASH)
+
+  // Bola to'lovidan avtomatik yaratilgan daromad.
+  paymentId String?  @db.Uuid
+  payment   Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  isAutoGenerated Boolean @default(false)
+
+  createdById String?   @db.Uuid
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([tenantId, branchId, date])
+  @@index([categoryId, date])
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+// Bolaning oylik hisob-fakturasi — qarzdorlik shu yerdan hisoblanadi (TZ §18).
+model Invoice {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId String @db.Uuid
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  childId  String @db.Uuid
+  child    Child  @relation(fields: [childId], references: [id], onDelete: Restrict)
+
+  // Davr `YYYY-MM`.
+  period  String
+  dueDate DateTime @db.Date
+
+  baseAmount      Decimal @db.Decimal(16, 2)
+  discountPercent Decimal @default(0) @db.Decimal(5, 2)
+  discountAmount  Decimal @default(0) @db.Decimal(16, 2)
+  totalAmount     Decimal @db.Decimal(16, 2)
+  paidAmount      Decimal @default(0) @db.Decimal(16, 2)
+  // totalAmount - paidAmount; qarzdorlik hisobotlari shu ustundan foydalanadi.
+  balance         Decimal @db.Decimal(16, 2)
+
+  status InvoiceStatus @default(ISSUED)
+  note   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  allocations PaymentAllocation[]
+
+  @@unique([childId, period])
+  @@index([tenantId, branchId, period, status])
+  @@index([status, dueDate])
+}
+
+model Payment {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId String @db.Uuid
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  childId  String @db.Uuid
+  child    Child  @relation(fields: [childId], references: [id], onDelete: Restrict)
+
+  amount        Decimal       @db.Decimal(16, 2)
+  date          DateTime      @db.Date
+  method        PaymentMethod @default(CASH)
+  receiptNumber String?
+  note          String?
+  /** Takroriy to'lov so'rovlarini birlashtirish uchun. */
+  idempotencyKey String?
+
+  createdById String?   @db.Uuid
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  allocations PaymentAllocation[]
+  incomes     Income[]
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, branchId, date])
+  @@index([childId, date])
+}
+
+// To'lovni hisob-fakturalarga taqsimlash: bitta to'lov bir necha oyni yopishi mumkin.
+model PaymentAllocation {
+  id        String  @id @default(uuid()) @db.Uuid
+  paymentId String  @db.Uuid
+  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  invoiceId String  @db.Uuid
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  amount Decimal @db.Decimal(16, 2)
+
+  @@unique([paymentId, invoiceId])
+  @@index([invoiceId])
+}
+
+// Reja vs fakt taqqoslash uchun oylik budjet (TZ §21).
+model Budget {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId String @db.Uuid
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  period          String
+  plannedRevenue  Decimal? @db.Decimal(18, 2)
+  plannedChildren Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lines BudgetLine[]
+
+  @@unique([branchId, period])
+  @@index([tenantId, period])
+}
+
+model BudgetLine {
+  id         String          @id @default(uuid()) @db.Uuid
+  budgetId   String          @db.Uuid
+  budget     Budget          @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  categoryId String          @db.Uuid
+  category   ExpenseCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  plannedAmount Decimal @db.Decimal(18, 2)
+
+  @@unique([budgetId, categoryId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// XODIMLAR VA ISH HAQI
+// ─────────────────────────────────────────────────────────────
+
+enum StaffPosition {
+  TEACHER
+  COOK
+  ASSISTANT
+  ADMINISTRATOR
+  STOREKEEPER
+  ACCOUNTANT
+  MANAGER
+  NURSE
+  SECURITY
+  CLEANER
+}
+
+enum EmploymentStatus {
+  ACTIVE
+  ON_LEAVE
+  SUSPENDED
+  TERMINATED
+}
+
+model Staff {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId String @db.Uuid
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  // Ilovaga kira oladigan xodim uchun foydalanuvchi yozuvi.
+  userId String? @unique @db.Uuid
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  firstName  String
+  lastName   String
+  middleName String?
+  position   StaffPosition
+  phone      String
+  birthDate  DateTime? @db.Date
+  hiredAt    DateTime  @db.Date
+  firedAt    DateTime? @db.Date
+
+  baseSalary   Decimal @db.Decimal(16, 2)
+  monthlyBonus Decimal @default(0) @db.Decimal(16, 2)
+
+  status         EmploymentStatus @default(ACTIVE)
+  passportNumber String?
+  address        String?
+  note           String?
+  avatarUrl      String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  attendance   StaffAttendance[]
+  payrollItems PayrollItem[]
+
+  @@index([tenantId, branchId, status])
+  @@index([position, status])
+}
+
+model StaffAttendance {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  staffId  String @db.Uuid
+  staff    Staff  @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  date       DateTime  @db.Date
+  checkInAt  DateTime?
+  checkOutAt DateTime?
+
+  workedHours Decimal @default(0) @db.Decimal(6, 2)
+  lateMinutes Int     @default(0)
+
+  // Geolokatsiya bilan tasdiqlash (TZ §24).
+  checkInLatitude   Decimal? @db.Decimal(9, 6)
+  checkInLongitude  Decimal? @db.Decimal(9, 6)
+  checkOutLatitude  Decimal? @db.Decimal(9, 6)
+  checkOutLongitude Decimal? @db.Decimal(9, 6)
+  deviceId          String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([staffId, date])
+  @@index([tenantId, date])
+}
+
+enum PayrollStatus {
+  DRAFT
+  APPROVED
+  PAID
+}
+
+model Payroll {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId String @db.Uuid
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  period String
+  status PayrollStatus @default(DRAFT)
+
+  totalGross Decimal @default(0) @db.Decimal(18, 2)
+  totalNet   Decimal @default(0) @db.Decimal(18, 2)
+  totalTax   Decimal @default(0) @db.Decimal(18, 2)
+
+  approvedById String?   @db.Uuid
+  approvedAt   DateTime?
+  paidAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items    PayrollItem[]
+  expenses Expense[]
+
+  @@unique([branchId, period])
+  @@index([tenantId, period, status])
+}
+
+model PayrollItem {
+  id        String  @id @default(uuid()) @db.Uuid
+  payrollId String  @db.Uuid
+  payroll   Payroll @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  staffId   String  @db.Uuid
+  staff     Staff   @relation(fields: [staffId], references: [id], onDelete: Restrict)
+
+  baseSalary   Decimal @db.Decimal(16, 2)
+  proratedBase Decimal @db.Decimal(16, 2)
+
+  // Nomlangan qatorlar: [{ label, amount }].
+  bonuses    Json @default("[]")
+  allowances Json @default("[]")
+  deductions Json @default("[]")
+
+  bonusTotal     Decimal @default(0) @db.Decimal(16, 2)
+  allowanceTotal Decimal @default(0) @db.Decimal(16, 2)
+  deductionTotal Decimal @default(0) @db.Decimal(16, 2)
+  taxAmount      Decimal @default(0) @db.Decimal(16, 2)
+  grossAmount    Decimal @default(0) @db.Decimal(16, 2)
+  netAmount      Decimal @default(0) @db.Decimal(16, 2)
+
+  workedDays   Int?
+  expectedDays Int?
+  note         String?
+
+  @@unique([payrollId, staffId])
+  @@index([staffId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// BILDIRISHNOMA VA AUDIT
+// ─────────────────────────────────────────────────────────────
+
+enum NotificationKind {
+  LOW_STOCK
+  EXPENSE_SPIKE
+  BUDGET_EXCEEDED
+  DEBT_ALERT
+  PAYMENT_DUE
+  STAFF_LATE
+  ABNORMAL_CONSUMPTION
+  ATTENDANCE_DROP
+  PRICE_SPIKE
+  PURCHASE_APPROVAL
+  NEW_PURCHASE
+  SYSTEM
+}
+
+enum NotificationSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+model Notification {
+  id       String  @id @default(uuid()) @db.Uuid
+  tenantId String  @db.Uuid
+  tenant   Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId String? @db.Uuid
+  branch   Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  kind     NotificationKind
+  severity NotificationSeverity @default(INFO)
+  title    String
+  message  String
+
+  // Bir xil ogohlantirish takrorlanmasligi uchun barqaror kalit.
+  dedupeKey String
+
+  entityType String?
+  entityId   String?
+  metric     Json?
+
+  createdAt DateTime @default(now())
+
+  recipients NotificationRecipient[]
+
+  @@unique([tenantId, dedupeKey])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, severity, createdAt])
+}
+
+model NotificationRecipient {
+  notificationId String       @db.Uuid
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  userId         String       @db.Uuid
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  readAt DateTime?
+
+  @@id([notificationId, userId])
+  @@index([userId, readAt])
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  APPROVE
+  REJECT
+  EXPORT
+}
+
+// Kim, qachon, nimani, qanday o'zgartirdi (TZ §29). Eski va yangi qiymat saqlanadi.
+model AuditLog {
+  id       String  @id @default(uuid()) @db.Uuid
+  tenantId String? @db.Uuid
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId   String? @db.Uuid
+  user     User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  action     AuditAction
+  entityType String
+  entityId   String?
+  summary    String?
+  reason     String?
+
+  oldValue Json?
+  newValue Json?
+  // O'zgargan maydonlar ro'yxati — audit ro'yxatini tez filtrlash uchun.
+  changedFields String[] @default([])
+
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, entityType, entityId])
+  @@index([userId, createdAt])
+}

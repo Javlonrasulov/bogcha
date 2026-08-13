@@ -1,0 +1,196 @@
+/* Auto-generated from prisma/schema.prisma — do not edit by hand. */
+
+export enum PlanTier {
+  TRIAL = 'TRIAL',
+  BASIC = 'BASIC',
+  PRO = 'PRO',
+  ENTERPRISE = 'ENTERPRISE',
+}
+
+export enum TenantStatus {
+  ACTIVE = 'ACTIVE',
+  SUSPENDED = 'SUSPENDED',
+  TRIAL_EXPIRED = 'TRIAL_EXPIRED',
+  ARCHIVED = 'ARCHIVED',
+}
+
+export enum Role {
+  SUPER_ADMIN = 'SUPER_ADMIN',
+  OWNER = 'OWNER',
+  ADMINISTRATOR = 'ADMINISTRATOR',
+  TEACHER = 'TEACHER',
+  COOK = 'COOK',
+  STOREKEEPER = 'STOREKEEPER',
+  ACCOUNTANT = 'ACCOUNTANT',
+}
+
+export enum Gender {
+  MALE = 'MALE',
+  FEMALE = 'FEMALE',
+}
+
+export enum ChildStatus {
+  ACTIVE = 'ACTIVE',
+  ON_VACATION = 'ON_VACATION',
+  TEMPORARILY_ABSENT = 'TEMPORARILY_ABSENT',
+  WITHDRAWN = 'WITHDRAWN',
+}
+
+export enum AttendanceStatus {
+  PRESENT = 'PRESENT',
+  ABSENT_EXCUSED = 'ABSENT_EXCUSED',
+  ABSENT_UNEXCUSED = 'ABSENT_UNEXCUSED',
+  ON_VACATION = 'ON_VACATION',
+  SICK = 'SICK',
+}
+
+export enum Unit {
+  KG = 'KG',
+  GRAM = 'GRAM',
+  LITER = 'LITER',
+  MILLILITER = 'MILLILITER',
+  PIECE = 'PIECE',
+  BOX = 'BOX',
+  PACK = 'PACK',
+  BUNDLE = 'BUNDLE',
+  OTHER = 'OTHER',
+}
+
+export enum StockMovementType {
+  IN = 'IN',
+  OUT = 'OUT',
+  RETURN = 'RETURN',
+  ADJUSTMENT = 'ADJUSTMENT',
+  WRITE_OFF = 'WRITE_OFF',
+  TRANSFER_IN = 'TRANSFER_IN',
+  TRANSFER_OUT = 'TRANSFER_OUT',
+}
+
+export enum StockMovementSource {
+  MANUAL = 'MANUAL',
+  PURCHASE = 'PURCHASE',
+  NUTRITION_CONSUMPTION = 'NUTRITION_CONSUMPTION',
+  INVENTORY_COUNT = 'INVENTORY_COUNT',
+  TRANSFER = 'TRANSFER',
+}
+
+export enum PurchaseOrderStatus {
+  DRAFT = 'DRAFT',
+  PENDING_APPROVAL = 'PENDING_APPROVAL',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  ORDERED = 'ORDERED',
+  RECEIVED = 'RECEIVED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum MealType {
+  BREAKFAST = 'BREAKFAST',
+  LUNCH = 'LUNCH',
+  SNACK = 'SNACK',
+}
+
+export enum Weekday {
+  MONDAY = 'MONDAY',
+  TUESDAY = 'TUESDAY',
+  WEDNESDAY = 'WEDNESDAY',
+  THURSDAY = 'THURSDAY',
+  FRIDAY = 'FRIDAY',
+  SATURDAY = 'SATURDAY',
+  SUNDAY = 'SUNDAY',
+}
+
+export enum ExpenseCategoryKind {
+  FOOD = 'FOOD',
+  PAYROLL = 'PAYROLL',
+  RENT = 'RENT',
+  UTILITIES = 'UTILITIES',
+  TRANSPORT = 'TRANSPORT',
+  STATIONERY = 'STATIONERY',
+  REPAIR = 'REPAIR',
+  MEDICINE = 'MEDICINE',
+  TAX = 'TAX',
+  MARKETING = 'MARKETING',
+  OTHER = 'OTHER',
+}
+
+export enum IncomeCategoryKind {
+  TUITION = 'TUITION',
+  EXTRA_SERVICE = 'EXTRA_SERVICE',
+  ENROLLMENT_FEE = 'ENROLLMENT_FEE',
+  OTHER = 'OTHER',
+}
+
+export enum PaymentMethod {
+  CASH = 'CASH',
+  CARD = 'CARD',
+  BANK_TRANSFER = 'BANK_TRANSFER',
+  ONLINE = 'ONLINE',
+}
+
+export enum InvoiceStatus {
+  DRAFT = 'DRAFT',
+  ISSUED = 'ISSUED',
+  PARTIALLY_PAID = 'PARTIALLY_PAID',
+  PAID = 'PAID',
+  OVERDUE = 'OVERDUE',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum StaffPosition {
+  TEACHER = 'TEACHER',
+  COOK = 'COOK',
+  ASSISTANT = 'ASSISTANT',
+  ADMINISTRATOR = 'ADMINISTRATOR',
+  STOREKEEPER = 'STOREKEEPER',
+  ACCOUNTANT = 'ACCOUNTANT',
+  MANAGER = 'MANAGER',
+  NURSE = 'NURSE',
+  SECURITY = 'SECURITY',
+  CLEANER = 'CLEANER',
+}
+
+export enum EmploymentStatus {
+  ACTIVE = 'ACTIVE',
+  ON_LEAVE = 'ON_LEAVE',
+  SUSPENDED = 'SUSPENDED',
+  TERMINATED = 'TERMINATED',
+}
+
+export enum PayrollStatus {
+  DRAFT = 'DRAFT',
+  APPROVED = 'APPROVED',
+  PAID = 'PAID',
+}
+
+export enum NotificationKind {
+  LOW_STOCK = 'LOW_STOCK',
+  EXPENSE_SPIKE = 'EXPENSE_SPIKE',
+  BUDGET_EXCEEDED = 'BUDGET_EXCEEDED',
+  DEBT_ALERT = 'DEBT_ALERT',
+  PAYMENT_DUE = 'PAYMENT_DUE',
+  STAFF_LATE = 'STAFF_LATE',
+  ABNORMAL_CONSUMPTION = 'ABNORMAL_CONSUMPTION',
+  ATTENDANCE_DROP = 'ATTENDANCE_DROP',
+  PRICE_SPIKE = 'PRICE_SPIKE',
+  PURCHASE_APPROVAL = 'PURCHASE_APPROVAL',
+  NEW_PURCHASE = 'NEW_PURCHASE',
+  SYSTEM = 'SYSTEM',
+}
+
+export enum NotificationSeverity {
+  INFO = 'INFO',
+  WARNING = 'WARNING',
+  CRITICAL = 'CRITICAL',
+}
+
+export enum AuditAction {
+  CREATE = 'CREATE',
+  UPDATE = 'UPDATE',
+  DELETE = 'DELETE',
+  LOGIN = 'LOGIN',
+  LOGOUT = 'LOGOUT',
+  APPROVE = 'APPROVE',
+  REJECT = 'REJECT',
+  EXPORT = 'EXPORT',
+}
